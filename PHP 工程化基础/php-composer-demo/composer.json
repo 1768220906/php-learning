@@ -1,0 +1,17 @@
+{
+    "name": "17682/php-composer-demo",
+    "description": "A demo project for learning PHP Composer",
+    "type": "project",
+    "autoload": {
+        "psr-4": {
+            "App\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "renchao",
+            "email": "19038147639@163.com"
+        }
+    ],
+    "require": {}
+}
