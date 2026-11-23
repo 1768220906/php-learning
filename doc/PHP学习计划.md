@@ -122,6 +122,25 @@
 
 阶段目标：能够使用 PHP 安全、可靠地访问 PostgreSQL，并完成常见业务数据操作。
 
+已完成：
+
+- 确认 PHP 已加载 `pdo_pgsql` / `pgsql` 扩展
+- 通过 SSH 隧道把阿里云上的 PostgreSQL 映射到本地 `127.0.0.1:5433`，数据库不对公网开放端口
+- 用 PDO 连接（`pgsql:host=...;port=...;dbname=...`），设置 `ERRMODE_EXCEPTION` 与 `FETCH_ASSOC`
+- 凭据管理：密码从 `DB_PASSWORD` 环境变量读取，缺失则直接退出，代码里不留密码
+- 连接后查询 `current_database()`、`current_user`、`version()` 确认目标库、身份与版本
+- 用 `PDOException` 捕获连接失败并输出原因
+
+待完成：
+
+- 创建 `minishop` 数据库与业务用户
+- 建表与字段类型设计
+- CRUD：`prepare()` + 参数绑定
+- 事务与回滚
+- 外键约束与一对多 / 多对多
+- 分页、排序、筛选与索引优化
+- 将 MiniShop 数据从数组迁移到数据库
+
 ### 阶段 5：后端架构与设计
 
 学习内容：
@@ -229,20 +248,18 @@
 
 ## 五、当前进度与下一步
 
-阶段 1 ~ 3 已完成，当前进入 **阶段 4：数据库开发**。
+阶段 1 ~ 3 已完成，阶段 4 进行中：已通过 SSH 隧道连上阿里云 PostgreSQL，`connection-test.php` 能查到库名、用户与版本。
 
 下一步建议按以下顺序继续：
 
-1. 确认本机 PostgreSQL 可用，创建 `minishop` 数据库与练习用户。
-2. 理解 PDO 的连接方式：`dsn`、用户名密码，以及 `PDO::ATTR_ERRMODE`、`PDO::ATTR_DEFAULT_FETCH_MODE` 的意义。
-3. 用 PDO 连接 PostgreSQL，先跑通 `SELECT 1` 验证连接。
-4. 设计并创建基础表：商品、分类、用户，先做主键与必要字段。
-5. 用 `prepare()` + 参数绑定完成 CRUD，对比拼接 SQL 的注入风险。
-6. 练习事务：`beginTransaction()` / `commit()` / `rollBack()`，用下单流程理解事务边界。
-7. 建立外键与约束，实现商品 - 分类一对多、订单 - 商品多对多。
-8. 练习分页、排序、筛选与复杂查询，用 `EXPLAIN` 观察索引是否生效。
-9. 把 MiniShop 的商品数据从数组迁移到 PostgreSQL，接口层保持响应结构不变。
-10. 阶段收尾后进入阶段 5：后端架构与设计。
+1. 在阿里云实例创建 `minishop` 数据库与业务用户，后续练习不再使用管理账号。
+2. 设计并创建基础表：商品、分类、用户，注意字段类型（价格用 `numeric`）。
+3. 用 `prepare()` + 参数绑定完成 CRUD，对比拼接 SQL 的注入风险。
+4. 练习事务：`beginTransaction()` / `commit()` / `rollBack()`，用下单流程理解事务边界。
+5. 建立外键与约束，实现商品 - 分类一对多、订单 - 商品多对多。
+6. 练习分页、排序、筛选与复杂查询，用 `EXPLAIN` 观察索引是否生效。
+7. 把 MiniShop 的商品数据从数组迁移到 PostgreSQL，接口层保持响应结构不变。
+8. 阶段收尾后进入阶段 5：后端架构与设计。
 
 ---
 

@@ -20,7 +20,7 @@
 
 ## 当前进度
 
-阶段 1 ~ 3 已完成，当前进入 **阶段 4：数据库开发**。
+阶段 1 ~ 3 已完成，当前处于 **阶段 4：数据库开发**——已通过 SSH 隧道连上阿里云 PostgreSQL，进入建表与 CRUD 阶段。
 
 ### 阶段 1：语言基础（已完成）
 
@@ -92,6 +92,23 @@ Guzzle 会带入 `guzzlehttp/promises`、`guzzlehttp/psr7`、`psr/http-*` 等传
 
 > 注意：`download.php` 读的是 `uploads/爱心.png`，而 `uploads/` 下的文件不入库。新克隆仓库后需先通过 `upload.php` 传一张同名图片，或改掉 `download.php` 里的文件名。
 
+### 阶段 4：数据库开发（进行中）
+
+已完成：
+
+- 确认 PHP 已启用 `pdo_pgsql` / `pgsql` 扩展
+- 用 **SSH 隧道**把阿里云上的 PostgreSQL 映射到本地 `127.0.0.1:5433`，数据库端口不对公网开放
+- 用 PDO 建立连接（`pgsql:host=127.0.0.1;port=5433;dbname=postgres`），并设置两项关键属性：
+  - `PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION`（出错抛异常，而不是静默返回 `false`）
+  - `PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC`（默认取关联数组）
+- 密码不写进代码：脚本从 `DB_PASSWORD` 环境变量读取，缺失时直接退出并提示
+- 连接成功后查询 `current_database()`、`current_user`、`version()` 验证连的是哪个库、以谁的身份、服务端版本
+- 连接失败时用 `PDOException` 捕获并输出原因
+
+待完成：建表、CRUD、预处理与参数绑定、事务、外键与多对多、分页 / 排序 / 索引，最后把 MiniShop 的商品数据从数组换成 PostgreSQL。
+
+> 安全约定：仓库里不出现任何数据库凭据。密码只通过环境变量传入；隧道连接信息（本地端口、库名、用户名）可以入库，密码不行。
+
 ## 实战项目：MiniShop 商城后端
 
 不重复做零散 Demo，而是用同一个商城项目随学习阶段逐步迭代。
@@ -150,29 +167,31 @@ php-learning/
 │       │   ├── Product.php
 │       │   └── User.php
 │       └── vendor/                 # Composer 生成，已被 .gitignore 忽略
-└── PHP Web 开发基础/                # 阶段 3 练习
-    └── php-server/
-        └── public/                 # 内置服务器根目录（-t 指向这里）
-            ├── index.php           # 入口 / 内置服务器
-            ├── request.php         # 超全局变量 + JSON 请求体
-            ├── test.php            # 最简 JSON 输出
-            ├── response.php        # 统一响应封装（成功 / 错误 + 状态码）
-            ├── response-test.php   # 200 与 404 分支
-            ├── restful.php         # RESTful 与状态码约定笔记
-            ├── cookie.php          # Cookie 读写与安全属性
-            ├── session.php         # 写入 Session
-            ├── session-read.php    # 跨请求读取 Session
-            ├── session-destroy.php # 销毁 Session
-            ├── upload.php          # 文件上传
-            ├── download.php        # 文件下载（attachment + readfile）
-            ├── validate.php        # 表单校验与 400 响应
-            ├── escape.php          # XSS 转义 + 密码哈希
-            └── uploads/            # 上传落盘目录（文件不提交，仅保留目录）
+├── PHP Web 开发基础/                # 阶段 3 练习
+│   └── php-server/
+│       └── public/                 # 内置服务器根目录（-t 指向这里）
+│           ├── index.php           # 入口 / 内置服务器
+│           ├── request.php         # 超全局变量 + JSON 请求体
+│           ├── test.php            # 最简 JSON 输出
+│           ├── response.php        # 统一响应封装（成功 / 错误 + 状态码）
+│           ├── response-test.php   # 200 与 404 分支
+│           ├── restful.php         # RESTful 与状态码约定笔记
+│           ├── cookie.php          # Cookie 读写与安全属性
+│           ├── session.php         # 写入 Session
+│           ├── session-read.php    # 跨请求读取 Session
+│           ├── session-destroy.php # 销毁 Session
+│           ├── upload.php          # 文件上传
+│           ├── download.php        # 文件下载（attachment + readfile）
+│           ├── validate.php        # 表单校验与 400 响应
+│           ├── escape.php          # XSS 转义 + 密码哈希
+│           └── uploads/            # 上传落盘目录（文件不提交，仅保留目录）
+└── PHP数据库开发/                   # 阶段 4 练习
+    └── connection-test.php         # PDO 连接阿里云 PostgreSQL（密码读环境变量）
 ```
 
 ## 环境与运行
 
-当前环境：**PHP 8.6.0（CLI）**、**Composer 2.11.2**，扩展 `curl`、`mbstring`、`openssl`、`zip` 已启用。
+当前环境：**PHP 8.6.0（CLI）**、**Composer 2.11.2**，扩展 `curl`、`mbstring`、`openssl`、`zip` 已启用，数据库扩展 `pdo_pgsql`、`pgsql` 已启用。
 
 运行阶段 1 的练习（在项目根目录）：
 
@@ -227,11 +246,22 @@ curl.exe -c s.txt -b s.txt http://localhost:8000/session-read.php
 
 `session.php`、`session-read.php`、`session-destroy.php` 必须按顺序访问才能体现跨请求共享。
 
+运行阶段 4 的数据库连接测试（前提：SSH 隧道已建立，本地 `5433` 映射到阿里云 PostgreSQL）：
+
+```powershell
+$env:DB_PASSWORD = "你的数据库密码"   # 只在当前终端会话有效
+cd ".\PHP数据库开发"
+php .\connection-test.php
+```
+
+成功会输出 `PostgreSQL 连接成功！` 以及 `current_database`、`current_user`、`version()` 三个字段；若忘记设置 `DB_PASSWORD`，脚本会直接提示并退出，不会拿空密码去连。
+
 语法检查与测试：
 
 ```powershell
 php -l .\php语言基础\object.php
 php -l ".\PHP 工程化基础\php-composer-demo\index.php"
+php -l ".\PHP数据库开发\connection-test.php"
 .\PHP 工程化基础\php-composer-demo\vendor\bin\phpunit --version
 ```
 
@@ -253,21 +283,20 @@ php -l ".\PHP 工程化基础\php-composer-demo\index.php"
 
 ## 下一步
 
-进入 **阶段 4：数据库开发**，按以下顺序推进：
+阶段 4 进行中，连接链路已打通，接着按以下顺序推进：
 
-1. 确认本机 PostgreSQL 可用，创建 `minishop` 数据库与练习用户。
-2. 理解 PDO：`dsn`、用户名密码、`PDO::ATTR_ERRMODE`（异常模式）、`PDO::ATTR_DEFAULT_FETCH_MODE`。
-3. 用 PDO 连接 PostgreSQL，跑通 `SELECT 1` 验证连接。
-4. 建表：商品表、分类表、用户表，先只做主键与必要字段。
-5. 完成 CRUD：`prepare()` + 参数绑定，杜绝拼接 SQL。
-6. 理解预处理如何防 SQL 注入，对比拼接字符串的危险写法。
-7. 练习事务：`beginTransaction()` / `commit()` / `rollBack()`，用下单场景理解事务边界。
-8. 建外键与约束，实现商品 - 分类一对多、订单 - 商品多对多。
-9. 练习分页、排序、筛选与索引基础（`EXPLAIN` 看执行计划）。
-10. 把 MiniShop 的商品数据从数组换成数据库，收尾后进入阶段 5。
+1. 在阿里云实例上创建 `minishop` 数据库与业务用户，避免后续练习直接用 `infra_admin` 这类管理账号。
+2. 建表：商品、分类、用户，先只做主键与必要字段，字段类型要能对上业务（价格用 `numeric` 而不是 `float`）。
+3. 用 `prepare()` + 参数绑定完成 CRUD，对比拼接 SQL 的注入风险。
+4. 练习事务：`beginTransaction()` / `commit()` / `rollBack()`，用下单流程理解事务边界。
+5. 建外键与约束，实现商品 - 分类一对多、订单 - 商品多对多。
+6. 练习分页、排序、筛选与复杂查询，用 `EXPLAIN` 观察索引是否生效。
+7. 把 MiniShop 的商品数据从数组迁移到 PostgreSQL，接口层响应结构保持不变。
+8. 收尾后进入阶段 5：后端架构与设计。
 
 ## 更新记录
 
+- 2026-11-23：进入阶段 4。新增 `PHP数据库开发/connection-test.php`，通过 SSH 隧道把阿里云 PostgreSQL 映射到本地 `5433`，用 PDO 连接并查询库名、当前用户与服务端版本；密码从 `DB_PASSWORD` 环境变量读取，仓库不落任何凭据。
 - 2026-11-23：阶段 3 完成。新增 `PHP Web 开发基础/php-server/public/`，覆盖内置服务器、请求 / 响应、统一 JSON 封装、RESTful 约定、Cookie、Session、文件上传与下载、表单校验、XSS 转义与密码哈希；内置服务器 + curl 全部实测通过，README 补充运行方式与阶段 3 说明。
 - 2026-11-23：阶段 2 完成。安装 Guzzle 8.6.0 与 PHPUnit 13.4，`composer.lock` 生成并锁定版本，完成 PSR-4 自动加载与 Guzzle 请求练习；同步更新 README 与学习计划中的阶段状态。
 - 2026-11-23：按 `doc/PHP学习计划.md` 重写 README，补充七阶段路线总览、MiniShop 实战项目规划、技术栈与阶段 2 详细进度，更新环境信息为 PHP 8.6.0 / Composer 2.11.2。
