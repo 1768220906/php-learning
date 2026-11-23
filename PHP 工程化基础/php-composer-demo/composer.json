@@ -13,5 +13,10 @@
             "email": "19038147639@163.com"
         }
     ],
-    "require": {}
+    "require": {
+        "guzzlehttp/guzzle": "^8.6"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^13.4"
+    }
 }

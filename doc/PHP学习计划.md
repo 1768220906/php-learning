@@ -10,7 +10,7 @@
 
 ### 阶段 1：PHP 语言基础
 
-**进度：基本完成**
+**进度：已完成**
 
 学习内容：
 
@@ -30,7 +30,7 @@
 
 ### 阶段 2：PHP 工程化基础
 
-**进度：当前阶段**
+**进度：已完成**
 
 学习内容：
 
@@ -49,24 +49,27 @@
 
 阶段目标：理解 PHP 项目如何管理第三方依赖、组织代码、自动加载类，并能独立初始化一个规范的 PHP 项目。
 
-当前已完成：
+已完成：
 
-- 安装 PHP 8.6.0
-- 配置 `php.ini`
+- 安装 PHP 8.6.0，配置 `php.ini`
 - 启用 `curl`、`mbstring`、`openssl`、`zip`
 - 安装 Composer 2.11.2
 - Composer 公钥配置完成
 - `composer diagnose` 检查通过
 - 验证 `PHPRC` 和 `PHP_INI_SCAN_DIR` 永久环境变量
+- 使用 `composer require guzzlehttp/guzzle` 安装第三方库（Guzzle 8.6.0）
+- 使用 `composer require --dev phpunit/phpunit` 安装开发依赖（PHPUnit 13.4）
+- 理解 `composer.json` 与 `composer.lock` 的关系，依赖版本已锁定
+- 区分 `require` / `require-dev`，掌握 `install` 与 `update` 的行为差异
+- 完成 PSR-4 自动加载实践（`App\` → `src/`）
+- 使用 Guzzle 完成 GET / POST / 自定义 Header / 超时 / 错误处理等 HTTP 请求练习
+- 整理 `php-composer-demo` 工程化结构，工程化阶段收尾
 
-待完成：
-
-- 使用 `composer require` 安装第三方库（计划使用 Guzzle）
-- 深入理解 `composer.json` 与 `composer.lock`
-- 完成 PSR-4 自动加载实践
-- 整理并完成工程化阶段
+阶段回顾：本阶段最大的收获是理解了“依赖声明在 `composer.json`、实际版本锁在 `composer.lock`、代码在 `vendor/`”，以及 PSR-4 让命名空间与目录结构一一对应，这与前端 npm 的 `package.json` / lock 文件 / `node_modules` 思路一致，但自动加载是语言层配合 Composer 完成的。
 
 ### 阶段 3：PHP Web 开发基础
+
+**进度：当前阶段**
 
 学习内容：
 
@@ -206,17 +209,20 @@
 
 ## 五、当前进度与下一步
 
-当前处于 **阶段 2：PHP 工程化基础**。
+阶段 1、阶段 2 已完成，当前进入 **阶段 3：PHP Web 开发基础**。
 
 下一步建议按以下顺序继续：
 
-1. 重新打开 PowerShell，验证 PHP 永久环境变量是否生效。
-2. 在 `php-composer-demo` 项目中执行 `composer require guzzlehttp/guzzle`。
-3. 观察 `composer.json`、`composer.lock` 和 `vendor/` 的变化。
-4. 使用 Guzzle 发起 HTTP 请求，理解第三方包的使用方式。
-5. 学习依赖版本约束、`require-dev`、`install` 与 `update` 的区别。
-6. 完成 PSR-4 自动加载实践，并整理工程化项目结构。
-7. 进入阶段 3：PHP Web 开发基础。
+1. 复习 HTTP 基础：请求方法、状态码、Header 与请求 / 响应体的结构。
+2. 使用内置服务器启动服务：`php -S localhost:8000 -t public`，观察请求如何进入 PHP。
+3. 练习超全局变量 `$_GET`、`$_POST`、`$_SERVER`，输出请求信息。
+4. 实现 JSON 接口：接收 JSON 请求体（`php://input` + `json_decode`），并按统一结构返回 JSON。
+5. 设置正确的 `Content-Type` 与状态码，理解 Header 在 API 中的作用。
+6. 练习 Cookie 与 Session，实现简单的登录态。
+7. 实现文件上传与表单处理，并补充输入验证。
+8. 学习基础 Web 安全：XSS 转义、CSRF Token、SQL 注入与预处理、`password_hash`。
+9. 为 MiniShop 编写第一版原生 PHP API（商品列表、商品详情、创建商品）。
+10. 阶段收尾后进入阶段 4：使用 PDO 连接 PostgreSQL。
 
 ---
 

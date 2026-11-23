@@ -3,3 +3,6 @@ vendor/
 
 # Local environment files
 .env
+
+# Agent / editor workspace data
+.workbuddy/

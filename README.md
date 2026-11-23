@@ -10,9 +10,9 @@
 
 | 阶段 | 主题 | 状态 |
 | --- | --- | --- |
-| 1 | PHP 语言基础 | 基本完成 |
-| 2 | PHP 工程化基础（Composer / 自动加载 / 规范） | 进行中 |
-| 3 | PHP Web 开发基础（HTTP、超全局变量、原生 API） | 未开始 |
+| 1 | PHP 语言基础 | 已完成 |
+| 2 | PHP 工程化基础（Composer / 自动加载 / 规范） | 已完成 |
+| 3 | PHP Web 开发基础（HTTP、超全局变量、原生 API） | 进行中 |
 | 4 | 数据库开发（PDO + PostgreSQL） | 未开始 |
 | 5 | 后端架构与设计（MVC、分层、DI） | 未开始 |
 | 6 | Laravel 框架实战 | 未开始 |
@@ -20,9 +20,9 @@
 
 ## 当前进度
 
-当前处于 **阶段 2：PHP 工程化基础**。
+阶段 1、阶段 2 已完成，当前进入 **阶段 3：PHP Web 开发基础**。
 
-### 阶段 1：语言基础（基本完成）
+### 阶段 1：语言基础（已完成）
 
 - PHP 环境搭建与 CLI 运行
 - 标签、输出、变量、数据类型、运算符与严格类型
@@ -30,25 +30,31 @@
 - 条件判断、循环、函数与类型声明
 - 异常处理
 - 面向对象：类与对象、封装 / 继承 / 多态、`Interface`、`Abstract Class`、`Trait`
-- Namespace 已初步了解，结合 Composer / PSR-4 再深入
+- Namespace 与 PSR-4 目录约定的配合（已在阶段 2 落地验证）
 
-### 阶段 2：工程化基础（进行中）
+### 阶段 2：工程化基础（已完成）
 
-已完成：
-
-- 安装 PHP 8.6.0，配置 `php.ini`
-- 启用 `curl`、`mbstring`、`openssl`、`zip` 扩展
+- 安装 PHP 8.6.0，配置 `php.ini`，启用 `curl`、`mbstring`、`openssl`、`zip` 扩展
 - 安装 Composer 2.11.2，完成公钥配置，`composer diagnose` 通过
-- 配置 `PHPRC`、`PHP_INI_SCAN_DIR` 环境变量
-- 初始化 `php-composer-demo`，编写 `composer.json`
-- 配置 PSR-4 自动加载（`App\` → `src/`），并通过 `vendor/autoload.php` 成功加载 `App\User`、`App\Product`
+- 配置 `PHPRC`、`PHP_INI_SCAN_DIR` 环境变量，命令行能正确加载 `php.ini`
+- 初始化 `php-composer-demo`，编写 `composer.json` 并配置 PSR-4（`App\` → `src/`）
+- 用 `composer require` 安装生产依赖 Guzzle
+- 用 `composer require --dev` 安装开发依赖 PHPUnit
+- 生成 `composer.lock` 锁定依赖版本，理解 `install`（按 lock 装）与 `update`（解析新版本）的差异
+- 理解 `composer.json`、`composer.lock`、`vendor/` 三者的分工
+- PSR-4 自动加载验证通过，`vendor/autoload.php` 可正常加载 `App\User`、`App\Product`
+- 用 Guzzle 完成 GET、POST（JSON 请求体）、自定义 Header、超时控制和异常处理练习
 
-待完成：
+当前依赖：
 
-- 使用 `composer require` 安装第三方库（计划使用 Guzzle）
-- 深入理解 `composer.json` 与 `composer.lock`（版本约束、锁定机制）
-- 区分 `require` / `require-dev`，以及 `install` 与 `update` 的行为差异
-- 整理工程化阶段的目录结构，补全编码规范
+| 类型 | 包 | 版本 |
+| --- | --- | --- |
+| 生产依赖 | `guzzlehttp/guzzle` | 8.6.0 |
+| 开发依赖 | `phpunit/phpunit` | 13.4 |
+
+Guzzle 会带入 `guzzlehttp/promises`、`guzzlehttp/psr7`、`psr/http-*` 等传递依赖；PHPUnit 已安装但暂无测试用例，留到阶段 6 写自动化测试时使用。
+
+阶段回顾：`composer.json` 只声明“要什么、版本范围”，`composer.lock` 记录“实际装了什么版本”，`vendor/` 才是代码落盘的位置。这套分工与前端 npm 的 `package.json` / lock 文件 / `node_modules` 一一对应，最大差异是 PHP 的类加载依赖 PSR-4 命名空间与目录映射，而不是打包器。
 
 ## 实战项目：MiniShop 商城后端
 
@@ -101,12 +107,13 @@ php-learning/
 │   └── object.php
 └── PHP 工程化基础/                  # 阶段 2 练习
     └── php-composer-demo/
-        ├── composer.json           # PSR-4: App\ → src/
-        ├── composer.lock
-        ├── index.php               # 通过 vendor/autoload.php 加载类
-        └── src/
-            ├── Product.php
-            └── User.php
+        ├── composer.json           # PSR-4: App\ → src/；Guzzle 生产依赖 + PHPUnit 开发依赖
+        ├── composer.lock           # 锁定实际安装版本
+        ├── index.php               # Guzzle 请求练习（GET/POST/Header/超时/异常，片段默认注释）
+        ├── src/
+        │   ├── Product.php
+        │   └── User.php
+        └── vendor/                 # Composer 生成，已被 .gitignore 忽略
 ```
 
 ## 环境与运行
@@ -126,19 +133,34 @@ php .\php语言基础\object.php
 
 ```powershell
 cd ".\PHP 工程化基础\php-composer-demo"
-composer install
+composer install          # 按 composer.lock 还原依赖
 php .\index.php
 ```
 
-语法检查：
+`index.php` 中是 Guzzle 的分段练习（基础引入、GET、POST、自定义 Header、超时、错误处理），各片段默认注释，想验证哪一段就取消注释再运行，例如 POST 示例：
+
+```php
+$client = new \GuzzleHttp\Client();
+$response = $client->post('https://httpbin.org/post', [
+    'json' => ['name' => '张三', 'age' => 15],
+]);
+echo $response->getStatusCode(), PHP_EOL;
+echo $response->getBody(), PHP_EOL;
+```
+
+语法检查与测试：
 
 ```powershell
 php -l .\php语言基础\object.php
+php -l ".\PHP 工程化基础\php-composer-demo\index.php"
+.\PHP 工程化基础\php-composer-demo\vendor\bin\phpunit --version
 ```
 
 `vendor/` 由 Composer 生成，已加入 `.gitignore`，不提交到仓库。
 
 > 说明：PHP 通过 Scoop 安装，需确保 `D:\Scoop\shims` 在 `PATH` 中（新开终端后生效）；若 `php` 命令不可用，可直接使用 `D:\Scoop\shims\php.exe`。
+>
+> `php.ini` 位于 `D:\Scoop\apps\php\current\cli\`，由 `PHPRC` 指向该目录后才会被加载。若 `php -m` 里看不到 `curl`、`mbstring`、`openssl`、`zip`，先检查 `php --ini` 是否显示 `Loaded Configuration File: (none)` —— 这意味着当前终端没继承环境变量，重开终端即可。
 
 ## 学习方式与约定
 
@@ -152,15 +174,22 @@ php -l .\php语言基础\object.php
 
 ## 下一步
 
-1. 新开终端，验证 PHP 永久环境变量（`PHPRC`、`PHP_INI_SCAN_DIR`、`PATH`）是否生效。
-2. 在 `php-composer-demo` 中执行 `composer require guzzlehttp/guzzle`。
-3. 观察 `composer.json`、`composer.lock` 与 `vendor/` 的变化。
-4. 用 Guzzle 发起 HTTP 请求，理解第三方包的使用方式。
-5. 学习版本约束、`require-dev`、`install` 与 `update` 的区别。
-6. 整理工程化项目结构，进入阶段 3：PHP Web 开发基础。
+进入 **阶段 3：PHP Web 开发基础**，按以下顺序推进：
+
+1. 复习 HTTP：请求方法、状态码、Header 与请求 / 响应体结构。
+2. 用 `php -S localhost:8000 -t public` 启动内置服务器，观察请求如何进入 PHP。
+3. 练习 `$_GET`、`$_POST`、`$_SERVER`，输出请求信息。
+4. 实现 JSON 接口：用 `php://input` + `json_decode` 接收请求体，统一 JSON 响应结构。
+5. 设置 `Content-Type` 与状态码，理解 Header 在 API 中的作用。
+6. 练习 Cookie 与 Session，实现简单登录态。
+7. 实现文件上传与表单处理，补充输入验证。
+8. 学习基础 Web 安全：XSS 转义、CSRF Token、SQL 注入与预处理、`password_hash`。
+9. 为 MiniShop 写出第一版原生 PHP API（商品列表、详情、创建）。
+10. 收尾后进入阶段 4：使用 PDO 连接 PostgreSQL。
 
 ## 更新记录
 
+- 2026-11-23：阶段 2 完成。安装 Guzzle 8.6.0 与 PHPUnit 13.4，`composer.lock` 生成并锁定版本，完成 PSR-4 自动加载与 Guzzle 请求练习；同步更新 README 与学习计划中的阶段状态。
 - 2026-11-23：按 `doc/PHP学习计划.md` 重写 README，补充七阶段路线总览、MiniShop 实战项目规划、技术栈与阶段 2 详细进度，更新环境信息为 PHP 8.6.0 / Composer 2.11.2。
 - 2026-11-20：开始学习 PHP 工程化基础，新增 Composer 和 PSR-4 自动加载示例，并忽略本地 `vendor/` 目录。
 - 2026-11-19：添加 README，补充项目说明、学习进度和运行方式。
