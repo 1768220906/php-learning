@@ -69,7 +69,7 @@
 
 ### 阶段 3：PHP Web 开发基础
 
-**进度：当前阶段**
+**进度：已完成**
 
 学习内容：
 
@@ -86,7 +86,27 @@
 
 阶段目标：不依赖 Web 框架，使用原生 PHP 编写一个简单的 API 服务，理解 PHP 如何处理 HTTP 请求并返回响应。
 
+已完成（练习代码见 `PHP Web 开发基础/php-server/public/`）：
+
+- 用 `php -S localhost:8000 -t public` 启动内置服务器，理解 `-S` 与 `-t` 参数
+- 通过 `$_GET`、`$_POST`、`$_SERVER` 读取查询参数、表单数据与方法 / URI / User-Agent
+- 用 `php://input` + `json_decode` 接收 JSON 请求体
+- 用 `header()` 设置 `Content-Type`，用 `json_encode` 输出 JSON
+- 封装统一响应：`successResponse()` / `errorResponse()`，配合 `http_response_code()` 返回 404 等状态码
+- 整理 RESTful 约定：URL 表示资源、方法表示操作、200 / 201 / 204 / 400 / 401 / 403 / 404 / 500 的适用场景
+- Cookie：`setcookie()` 的 `expires`、`path`、`httponly`、`samesite`，并验证跨请求读取
+- Session：`session_start()`、`$_SESSION`、`session_id()`、`session_destroy()`，验证跨请求共享与销毁
+- 文件上传：`$_FILES`、`UPLOAD_ERR_OK` 校验、`move_uploaded_file()`
+- 文件下载：`Content-Type: application/octet-stream`、`Content-Disposition: attachment`、`readfile()`
+- 表单校验：`trim()`、`filter_var()`（邮箱、整数）、错误收集与 400 响应
+- XSS 转义：`htmlspecialchars($str, ENT_QUOTES, 'UTF-8')`
+- 密码安全：`password_hash()` 生成哈希、`password_verify()` 校验，理解为什么不要存明文或自己写加密
+
+留到后续阶段补：CSRF Token（阶段 6 认证）、PUT/PATCH/DELETE 请求体解析（阶段 4~5）、SQL 注入与预处理（阶段 4）。
+
 ### 阶段 4：数据库开发
+
+**进度：当前阶段**
 
 学习内容：
 
@@ -209,20 +229,20 @@
 
 ## 五、当前进度与下一步
 
-阶段 1、阶段 2 已完成，当前进入 **阶段 3：PHP Web 开发基础**。
+阶段 1 ~ 3 已完成，当前进入 **阶段 4：数据库开发**。
 
 下一步建议按以下顺序继续：
 
-1. 复习 HTTP 基础：请求方法、状态码、Header 与请求 / 响应体的结构。
-2. 使用内置服务器启动服务：`php -S localhost:8000 -t public`，观察请求如何进入 PHP。
-3. 练习超全局变量 `$_GET`、`$_POST`、`$_SERVER`，输出请求信息。
-4. 实现 JSON 接口：接收 JSON 请求体（`php://input` + `json_decode`），并按统一结构返回 JSON。
-5. 设置正确的 `Content-Type` 与状态码，理解 Header 在 API 中的作用。
-6. 练习 Cookie 与 Session，实现简单的登录态。
-7. 实现文件上传与表单处理，并补充输入验证。
-8. 学习基础 Web 安全：XSS 转义、CSRF Token、SQL 注入与预处理、`password_hash`。
-9. 为 MiniShop 编写第一版原生 PHP API（商品列表、商品详情、创建商品）。
-10. 阶段收尾后进入阶段 4：使用 PDO 连接 PostgreSQL。
+1. 确认本机 PostgreSQL 可用，创建 `minishop` 数据库与练习用户。
+2. 理解 PDO 的连接方式：`dsn`、用户名密码，以及 `PDO::ATTR_ERRMODE`、`PDO::ATTR_DEFAULT_FETCH_MODE` 的意义。
+3. 用 PDO 连接 PostgreSQL，先跑通 `SELECT 1` 验证连接。
+4. 设计并创建基础表：商品、分类、用户，先做主键与必要字段。
+5. 用 `prepare()` + 参数绑定完成 CRUD，对比拼接 SQL 的注入风险。
+6. 练习事务：`beginTransaction()` / `commit()` / `rollBack()`，用下单流程理解事务边界。
+7. 建立外键与约束，实现商品 - 分类一对多、订单 - 商品多对多。
+8. 练习分页、排序、筛选与复杂查询，用 `EXPLAIN` 观察索引是否生效。
+9. 把 MiniShop 的商品数据从数组迁移到 PostgreSQL，接口层保持响应结构不变。
+10. 阶段收尾后进入阶段 5：后端架构与设计。
 
 ---
 

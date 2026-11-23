@@ -6,3 +6,7 @@ vendor/
 
 # Agent / editor workspace data
 .workbuddy/
+
+# Runtime uploads (keep the directory only)
+PHP Web 开发基础/php-server/public/uploads/*
+!PHP Web 开发基础/php-server/public/uploads/.gitkeep

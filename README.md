@@ -12,15 +12,15 @@
 | --- | --- | --- |
 | 1 | PHP 语言基础 | 已完成 |
 | 2 | PHP 工程化基础（Composer / 自动加载 / 规范） | 已完成 |
-| 3 | PHP Web 开发基础（HTTP、超全局变量、原生 API） | 进行中 |
-| 4 | 数据库开发（PDO + PostgreSQL） | 未开始 |
+| 3 | PHP Web 开发基础（HTTP、超全局变量、原生 API） | 已完成 |
+| 4 | 数据库开发（PDO + PostgreSQL） | 进行中 |
 | 5 | 后端架构与设计（MVC、分层、DI） | 未开始 |
 | 6 | Laravel 框架实战 | 未开始 |
 | 7 | 部署、运维与综合实战 | 未开始 |
 
 ## 当前进度
 
-阶段 1、阶段 2 已完成，当前进入 **阶段 3：PHP Web 开发基础**。
+阶段 1 ~ 3 已完成，当前进入 **阶段 4：数据库开发**。
 
 ### 阶段 1：语言基础（已完成）
 
@@ -55,6 +55,42 @@
 Guzzle 会带入 `guzzlehttp/promises`、`guzzlehttp/psr7`、`psr/http-*` 等传递依赖；PHPUnit 已安装但暂无测试用例，留到阶段 6 写自动化测试时使用。
 
 阶段回顾：`composer.json` 只声明“要什么、版本范围”，`composer.lock` 记录“实际装了什么版本”，`vendor/` 才是代码落盘的位置。这套分工与前端 npm 的 `package.json` / lock 文件 / `node_modules` 一一对应，最大差异是 PHP 的类加载依赖 PSR-4 命名空间与目录映射，而不是打包器。
+
+### 阶段 3：Web 开发基础（已完成）
+
+练习集中在 `PHP Web 开发基础/php-server/public/`，用 PHP 内置服务器运行，一个文件对应一个知识点：
+
+| 文件 | 练习内容 |
+| --- | --- |
+| `index.php` | 内置服务器入口、`date()`、`__FILE__` |
+| `request.php` | `$_GET` / `$_POST`、`$_SERVER`（方法、URI、User-Agent、Accept-Language）、`php://input` + `json_decode` 接收 JSON |
+| `test.php` | 输出 JSON：`Content-Type` + `json_encode` |
+| `response.php` | 统一响应封装：`successResponse()` / `errorResponse()`，含 `http_response_code()` |
+| `response-test.php` | 基于统一封装实现 200 与 404 分支 |
+| `restful.php` | RESTful 约定笔记：URL 表示资源、方法表示操作、常用状态码 |
+| `cookie.php` | `setcookie()` 的 `expires` / `path` / `httponly` / `samesite`，以及跨请求读取 |
+| `session.php` / `session-read.php` / `session-destroy.php` | `session_start()`、`$_SESSION`、`session_id()`、`session_destroy()` |
+| `upload.php` | `$_FILES`、`UPLOAD_ERR_OK` 校验、`move_uploaded_file()` |
+| `download.php` | 文件下载：`Content-Type: application/octet-stream` + `Content-Disposition: attachment` + `readfile()` |
+| `validate.php` | 输入校验：`trim()`、`filter_var()`（邮箱 / 整数）、错误收集与 400 响应 |
+| `escape.php` | XSS 转义 `htmlspecialchars($str, ENT_QUOTES, 'UTF-8')`；密码哈希 `password_hash()` / `password_verify()` |
+
+已用内置服务器 + curl 实测：
+
+- `request.php?name=Tom&age=20` 正确回显 GET 参数与 User-Agent；POST JSON 时 `jsonData` 解析成功
+- `response-test.php?id=1` → **200**，`?id=99` → **404**，且响应体是统一错误结构
+- `validate.php` 空表单 → **400** 并返回字段级错误；合法表单 → **200**
+- Cookie 首次请求读到 `null`（同一响应里设置、当次请求读不到），带 Cookie 的第二次请求读到 `Tom`
+- Session 三件套跑通「写入 → 跨请求读取 → 销毁」，销毁后读不到数据且 `session_id` 已变更
+- `upload.php` 上传 png 返回 `error: 0`，文件成功落到 `uploads/`
+- `download.php` 返回 **200**，带 `Content-Type: application/octet-stream` 与 `Content-Disposition: attachment; filename="爱心.png"`，下载字节数与源图一致（5339 bytes）
+- `escape.php` 中 `password_verify('123456', $hash)` 返回真，`echo` 输出 `1`
+
+阶段回顾：`$_SERVER`、`$_GET`、`$_POST`、`$_FILES`、`$_COOKIE`、`$_SESSION` 就是 PHP 把 HTTP 请求拆好后摆上桌的几个入口，写原生 API 本质上就是「读超全局变量 → 校验 → 组装 JSON → 设状态码」。另外 `json_encode` 默认把中文转成 `\uXXXX`，`response.php` 加了 `JSON_UNESCAPED_UNICODE` 才直接输出中文，而 `validate.php` 没加，所以返回的是转义形式——两者都合法，只是可读性不同。
+
+本阶段刻意留到后续补的点：CSRF Token（阶段 6 做认证时）、PUT/PATCH/DELETE 请求体解析（阶段 4~5 做 MiniShop API 时）、SQL 注入与预处理（阶段 4 用 PDO 时）。
+
+> 注意：`download.php` 读的是 `uploads/爱心.png`，而 `uploads/` 下的文件不入库。新克隆仓库后需先通过 `upload.php` 传一张同名图片，或改掉 `download.php` 里的文件名。
 
 ## 实战项目：MiniShop 商城后端
 
@@ -105,15 +141,33 @@ php-learning/
 │   ├── string.php
 │   ├── array.php
 │   └── object.php
-└── PHP 工程化基础/                  # 阶段 2 练习
-    └── php-composer-demo/
-        ├── composer.json           # PSR-4: App\ → src/；Guzzle 生产依赖 + PHPUnit 开发依赖
-        ├── composer.lock           # 锁定实际安装版本
-        ├── index.php               # Guzzle 请求练习（GET/POST/Header/超时/异常，片段默认注释）
-        ├── src/
-        │   ├── Product.php
-        │   └── User.php
-        └── vendor/                 # Composer 生成，已被 .gitignore 忽略
+├── PHP 工程化基础/                  # 阶段 2 练习
+│   └── php-composer-demo/
+│       ├── composer.json           # PSR-4: App\ → src/；Guzzle 生产依赖 + PHPUnit 开发依赖
+│       ├── composer.lock           # 锁定实际安装版本
+│       ├── index.php               # Guzzle 请求练习（GET/POST/Header/超时/异常，片段默认注释）
+│       ├── src/
+│       │   ├── Product.php
+│       │   └── User.php
+│       └── vendor/                 # Composer 生成，已被 .gitignore 忽略
+└── PHP Web 开发基础/                # 阶段 3 练习
+    └── php-server/
+        └── public/                 # 内置服务器根目录（-t 指向这里）
+            ├── index.php           # 入口 / 内置服务器
+            ├── request.php         # 超全局变量 + JSON 请求体
+            ├── test.php            # 最简 JSON 输出
+            ├── response.php        # 统一响应封装（成功 / 错误 + 状态码）
+            ├── response-test.php   # 200 与 404 分支
+            ├── restful.php         # RESTful 与状态码约定笔记
+            ├── cookie.php          # Cookie 读写与安全属性
+            ├── session.php         # 写入 Session
+            ├── session-read.php    # 跨请求读取 Session
+            ├── session-destroy.php # 销毁 Session
+            ├── upload.php          # 文件上传
+            ├── download.php        # 文件下载（attachment + readfile）
+            ├── validate.php        # 表单校验与 400 响应
+            ├── escape.php          # XSS 转义 + 密码哈希
+            └── uploads/            # 上传落盘目录（文件不提交，仅保留目录）
 ```
 
 ## 环境与运行
@@ -148,6 +202,31 @@ echo $response->getStatusCode(), PHP_EOL;
 echo $response->getBody(), PHP_EOL;
 ```
 
+运行阶段 3 的练习（内置服务器，根目录指向 `public`）：
+
+```powershell
+cd ".\PHP Web 开发基础\php-server"
+php -S localhost:8000 -t public
+```
+
+然后浏览器访问，或用 curl 验证：
+
+```powershell
+curl.exe "http://localhost:8000/request.php?name=Tom&age=20"
+curl.exe "http://localhost:8000/response-test.php?id=99"    # 期望 404
+curl.exe -X POST http://localhost:8000/validate.php -d "name=张三&email=a@b.com&age=28"
+```
+
+Cookie 与 Session 需要「带 Cookie 连续请求」才能看出效果，用 curl 的 cookie jar：
+
+```powershell
+curl.exe -c cookie.txt -b cookie.txt http://localhost:8000/cookie.php   # 第二次才会读到 Tom
+curl.exe -c s.txt -b s.txt http://localhost:8000/session.php
+curl.exe -c s.txt -b s.txt http://localhost:8000/session-read.php
+```
+
+`session.php`、`session-read.php`、`session-destroy.php` 必须按顺序访问才能体现跨请求共享。
+
 语法检查与测试：
 
 ```powershell
@@ -174,21 +253,22 @@ php -l ".\PHP 工程化基础\php-composer-demo\index.php"
 
 ## 下一步
 
-进入 **阶段 3：PHP Web 开发基础**，按以下顺序推进：
+进入 **阶段 4：数据库开发**，按以下顺序推进：
 
-1. 复习 HTTP：请求方法、状态码、Header 与请求 / 响应体结构。
-2. 用 `php -S localhost:8000 -t public` 启动内置服务器，观察请求如何进入 PHP。
-3. 练习 `$_GET`、`$_POST`、`$_SERVER`，输出请求信息。
-4. 实现 JSON 接口：用 `php://input` + `json_decode` 接收请求体，统一 JSON 响应结构。
-5. 设置 `Content-Type` 与状态码，理解 Header 在 API 中的作用。
-6. 练习 Cookie 与 Session，实现简单登录态。
-7. 实现文件上传与表单处理，补充输入验证。
-8. 学习基础 Web 安全：XSS 转义、CSRF Token、SQL 注入与预处理、`password_hash`。
-9. 为 MiniShop 写出第一版原生 PHP API（商品列表、详情、创建）。
-10. 收尾后进入阶段 4：使用 PDO 连接 PostgreSQL。
+1. 确认本机 PostgreSQL 可用，创建 `minishop` 数据库与练习用户。
+2. 理解 PDO：`dsn`、用户名密码、`PDO::ATTR_ERRMODE`（异常模式）、`PDO::ATTR_DEFAULT_FETCH_MODE`。
+3. 用 PDO 连接 PostgreSQL，跑通 `SELECT 1` 验证连接。
+4. 建表：商品表、分类表、用户表，先只做主键与必要字段。
+5. 完成 CRUD：`prepare()` + 参数绑定，杜绝拼接 SQL。
+6. 理解预处理如何防 SQL 注入，对比拼接字符串的危险写法。
+7. 练习事务：`beginTransaction()` / `commit()` / `rollBack()`，用下单场景理解事务边界。
+8. 建外键与约束，实现商品 - 分类一对多、订单 - 商品多对多。
+9. 练习分页、排序、筛选与索引基础（`EXPLAIN` 看执行计划）。
+10. 把 MiniShop 的商品数据从数组换成数据库，收尾后进入阶段 5。
 
 ## 更新记录
 
+- 2026-11-23：阶段 3 完成。新增 `PHP Web 开发基础/php-server/public/`，覆盖内置服务器、请求 / 响应、统一 JSON 封装、RESTful 约定、Cookie、Session、文件上传与下载、表单校验、XSS 转义与密码哈希；内置服务器 + curl 全部实测通过，README 补充运行方式与阶段 3 说明。
 - 2026-11-23：阶段 2 完成。安装 Guzzle 8.6.0 与 PHPUnit 13.4，`composer.lock` 生成并锁定版本，完成 PSR-4 自动加载与 Guzzle 请求练习；同步更新 README 与学习计划中的阶段状态。
 - 2026-11-23：按 `doc/PHP学习计划.md` 重写 README，补充七阶段路线总览、MiniShop 实战项目规划、技术栈与阶段 2 详细进度，更新环境信息为 PHP 8.6.0 / Composer 2.11.2。
 - 2026-11-20：开始学习 PHP 工程化基础，新增 Composer 和 PSR-4 自动加载示例，并忽略本地 `vendor/` 目录。
