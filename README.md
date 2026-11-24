@@ -1,6 +1,6 @@
 # PHP 学习记录
 
-本仓库记录我从前端转向 PHP 后端的学习过程：知识笔记、可运行的练习代码，以及贯穿整个学习周期的实战项目 **MiniShop 商城后端**。
+本仓库记录我从前端转向 PHP 后端的学习过程：知识笔记、可运行的练习代码，以及阶段 6 起正式开发的实战项目 **MiniShop 商城后端**。
 
 学习计划原文见 [`doc/PHP学习计划.md`](doc/PHP学习计划.md)。
 
@@ -13,9 +13,9 @@
 | 1 | PHP 语言基础 | 已完成 |
 | 2 | PHP 工程化基础（Composer / 自动加载 / 规范） | 已完成 |
 | 3 | PHP Web 开发基础（HTTP、超全局变量、原生 API） | 已完成 |
-| 4 | 数据库开发（PDO + PostgreSQL） | 进行中 |
-| 5 | 后端架构与设计（MVC、分层、DI） | 未开始 |
-| 6 | Laravel 框架实战 | 未开始 |
+| 4 | 数据库开发（PDO + PostgreSQL） | 已完成 |
+| 5 | 后端架构与设计（MVC、分层、DI，练习骨架） | 进行中 |
+| 6 | Laravel 框架实战（**MiniShop 正式开发**） | 未开始 |
 | 7 | 部署、运维与综合实战 | 未开始 |
 
 ## 当前进度
@@ -88,30 +88,74 @@ Guzzle 会带入 `guzzlehttp/promises`、`guzzlehttp/psr7`、`psr/http-*` 等传
 
 阶段回顾：`$_SERVER`、`$_GET`、`$_POST`、`$_FILES`、`$_COOKIE`、`$_SESSION` 就是 PHP 把 HTTP 请求拆好后摆上桌的几个入口，写原生 API 本质上就是「读超全局变量 → 校验 → 组装 JSON → 设状态码」。另外 `json_encode` 默认把中文转成 `\uXXXX`，`response.php` 加了 `JSON_UNESCAPED_UNICODE` 才直接输出中文，而 `validate.php` 没加，所以返回的是转义形式——两者都合法，只是可读性不同。
 
-本阶段刻意留到后续补的点：CSRF Token（阶段 6 做认证时）、PUT/PATCH/DELETE 请求体解析（阶段 4~5 做 MiniShop API 时）、SQL 注入与预处理（阶段 4 用 PDO 时）。
+本阶段刻意留到后续补的点：CSRF Token（阶段 6 做认证时）、PUT/PATCH/DELETE 请求体解析（阶段 5~6）。SQL 注入与预处理已在阶段 4 用 PDO 补齐。
 
 > 注意：`download.php` 读的是 `uploads/爱心.png`，而 `uploads/` 下的文件不入库。新克隆仓库后需先通过 `upload.php` 传一张同名图片，或改掉 `download.php` 里的文件名。
 
-### 阶段 4：数据库开发（进行中）
+### 阶段 4：数据库开发（已完成）
 
 已完成：
 
 - 确认 PHP 已启用 `pdo_pgsql` / `pgsql` 扩展
 - 用 **SSH 隧道**把阿里云上的 PostgreSQL 映射到本地 `127.0.0.1:5433`，数据库端口不对公网开放
-- 用 PDO 建立连接（`pgsql:host=127.0.0.1;port=5433;dbname=postgres`），并设置两项关键属性：
+- 用 PDO 建立连接：先用 `infra_admin` / `postgres` 库做连通性验证，随后改用业务库 `php_learning` + 业务用户 `php_learning_user`，并设置两项关键属性：
   - `PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION`（出错抛异常，而不是静默返回 `false`）
   - `PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC`（默认取关联数组）
 - 密码不写进代码：脚本从 `DB_PASSWORD` 环境变量读取，缺失时直接退出并提示
 - 连接成功后查询 `current_database()`、`current_user`、`version()` 验证连的是哪个库、以谁的身份、服务端版本
 - 连接失败时用 `PDOException` 捕获并输出原因
+- 抽出 `database.php` 统一提供 `$pdo`，各练习 `require_once` 复用，不再重复写连接
+- 结果获取：`fetch()` 单行、`fetchAll()` 多行、`fetchColumn()` 取单值（`COUNT(*)`）、`while` 逐行遍历
+- 建练习表：`products`、`orders`、`order_items`、`transaction_demo`（练习用，非商城正式建模）
+- 商品 CRUD：`products/create.php`、`update.php`、`delete.php`、`query.php`、`list.php`
+- 用 `RETURNING` 让 `INSERT` / `UPDATE` / `DELETE` 直接返回受影响的行，省掉一次回查
+- 排序防注入：列名与方向都用白名单 `in_array($v, $allowed, true)` 校验，不在白名单直接退出
+- 动态条件查询：关键词 `LIKE` + 价格区间按需拼 WHERE，条件与参数分开收集，全部走参数绑定
+- 分页：`COUNT(*)` 算总数与总页数，`LIMIT / OFFSET` 分页，`bindValue(..., PDO::PARAM_INT)` 明确整数
+- 事务：`beginTransaction()` / `commit()` / `rollBack()`，配合 `inTransaction()` 判断，`transaction-test.php` 演示异常回滚
+- 下单事务：`order.php` 在同一事务内扣库存（`WHERE stock >= :n` + `RETURNING`）、写 `orders`、写 `order_items`，任一步失败整体回滚
+- **HTTP 商品 API**：`public/products.php` 把上面这套 PDO 查询包成原生接口
+  - `GET /products.php?keyword=键盘&page=1&pageSize=10` → 搜索 + 分页，返回 `data` 与 `pagination`（`total` / `page` / `pageSize` / `totalPages`）
+  - `POST /products.php`（JSON body：`name` / `price` / `stock`）→ 参数校验后插入，成功返回 **201** 与创建后的记录
+  - 参数不合法统一返回 **400** + `{success:false, message}`，全部 `JSON_UNESCAPED_UNICODE` 输出中文
 
-待完成：建表、CRUD、预处理与参数绑定、事务、外键与多对多、分页 / 排序 / 索引，最后把 MiniShop 的商品数据从数组换成 PostgreSQL。
+这是「数据库层」和「HTTP 层」第一次接上：阶段 3 学的是怎么读请求、怎么写响应，阶段 4 学的是怎么安全地存取数据，`products.php` 就是把两段拼起来——接口本身很简单，但它是阶段 5 分层的起点（现在 SQL、校验、响应全挤在一个文件里）。
+
+本阶段未覆盖（留到阶段 6 做查询优化时补）：索引与 `EXPLAIN` 执行计划分析、显式外键约束的验证、`JOIN` 查询练习（当前只有 `orders` / `order_items` 的表结构与事务内写入，没有联合查询）；完整商城建模留到阶段 6 用 Laravel Migration 做。
 
 > 安全约定：仓库里不出现任何数据库凭据。密码只通过环境变量传入；隧道连接信息（本地端口、库名、用户名）可以入库，密码不行。
 
+### 阶段 5：后端架构与设计（进行中）
+
+目标：把阶段 4 那个「SQL、校验、响应挤在一个文件里」的 `products.php` 拆开，理解每一层该管什么。
+
+计划覆盖：
+
+- Router：把 `/products`、`/products/{id}` 映射到具体处理函数，告别一个文件一个接口
+- Controller：只负责取参数、调服务、定状态码
+- Service：业务规则（库存校验、金额计算）集中在这里
+- Repository：所有 SQL 收敛到一层，换数据库只改这里
+- 依赖注入：把 `$pdo` / Repository 传进去，而不是在类里自己 `new` / `require`
+- 统一异常处理 + 统一响应结构，配 `try/catch` 兜住未预期错误
+- 配置与环境变量、简单日志
+
 ## 实战项目：MiniShop 商城后端
 
-不重复做零散 Demo，而是用同一个商城项目随学习阶段逐步迭代。
+**MiniShop 在阶段 6（Laravel）才正式开发。** 阶段 1~5 只做聚焦单个知识点的小练习，不提前背商城业务——原生 PHP 手写全栈商城成本高、可维护性差，路由、ORM、迁移、认证、队列这些能力放在 Laravel 里学更贴近真实项目；阶段 5 先用一个练习骨架把分层职责弄清，再进框架。
+
+各阶段的练习载体：
+
+| 阶段 | 练习载体 | 目的 |
+| --- | --- | --- |
+| 1 | `php语言基础/` | 语法、数组、函数、OOP、异常 |
+| 2 | `PHP 工程化基础/php-composer-demo/` | Composer、PSR-4、第三方依赖 |
+| 3 | `PHP Web 开发基础/php-server/` | HTTP、超全局变量、Cookie/Session、上传下载、校验、安全基础 |
+| 4 | `PHP数据库开发/` + 练习表（如 `products`） | PDO、CRUD、预处理、事务、动态查询与分页、把查询整合成 HTTP API |
+| 5 | 待建的 `mini-framework` 练习项目 | Router、Controller、Service、Repository、DI、异常与日志 |
+
+练习表只用来验证 SQL 与 PDO 能力，字段精简；正式表结构在阶段 6 用 Laravel Migration 重新设计。
+
+### MiniShop 功能规划
 
 | 模块 | 计划实现的功能 |
 | --- | --- |
@@ -135,15 +179,17 @@ Guzzle 会带入 `guzzlehttp/promises`、`guzzlehttp/psr7`、`psr/http-*` 等传
 - **服务器：** Linux（阿里云 ECS）
 - **Web 服务：** Nginx 或 Caddy
 
-### 项目演进方式
+### MiniShop 开发路线（阶段 6~7）
 
-1. 阶段 1：编写 PHP 基础代码，熟悉语言特性。
-2. 阶段 2：初始化项目，使用 Composer 管理依赖与自动加载。
-3. 阶段 3：用原生 PHP 实现基础 HTTP API。
-4. 阶段 4：连接 PostgreSQL，实现商品、用户等数据操作。
-5. 阶段 5：重构为 Router / Controller / Service / Repository 分层结构。
-6. 阶段 6：使用 Laravel 实现完整商城业务。
-7. 阶段 7：通过 Docker Compose 部署到阿里云，补齐缓存、异步任务、日志与运维能力。
+1. 初始化 Laravel 项目，配置 PostgreSQL 与 `.env`，跑通第一条 Migration。
+2. 用户模块：注册、登录、认证与角色权限。
+3. 商品与分类：Migration + Eloquent 模型 + CRUD + 关联关系。
+4. 搜索：筛选、排序、分页，配合索引优化。
+5. 购物车与订单：创建订单、订单明细、状态流转，用事务保证一致性。
+6. 支付：模拟支付流程与支付状态管理。
+7. 缓存与异步：Redis 缓存热点商品，队列处理订单任务。
+8. 自动化测试：为订单、支付等核心流程补测试。
+9. 阶段 7：Docker Compose 部署到阿里云，配 Nginx / Caddy + PHP-FPM，补日志、监控与备份。
 
 ## 目录结构
 
@@ -186,7 +232,19 @@ php-learning/
 │           ├── escape.php          # XSS 转义 + 密码哈希
 │           └── uploads/            # 上传落盘目录（文件不提交，仅保留目录）
 └── PHP数据库开发/                   # 阶段 4 练习
-    └── connection-test.php         # PDO 连接阿里云 PostgreSQL（密码读环境变量）
+    ├── database.php                # 共享 PDO 连接（密码读环境变量）
+    ├── connection-test.php         # 连接阿里云 PostgreSQL 并查库名 / 用户 / 版本
+    ├── transaction-test.php        # 事务异常回滚演示
+    ├── order.php                   # 下单事务：扣库存 + 写订单 + 写明细
+    ├── products/                   # 商品 CRUD 与查询练习
+    │   ├── create.php
+    │   ├── update.php
+    │   ├── delete.php
+    │   ├── query.php
+    │   ├── list.php                # 排序白名单
+    │   └── search.php              # 动态条件 + 分页 + 总数
+    └── public/
+        └── products.php            # HTTP 商品 API（GET 搜索分页 / POST 创建）
 ```
 
 ## 环境与运行
@@ -256,6 +314,37 @@ php .\connection-test.php
 
 成功会输出 `PostgreSQL 连接成功！` 以及 `current_database`、`current_user`、`version()` 三个字段；若忘记设置 `DB_PASSWORD`，脚本会直接提示并退出，不会拿空密码去连。
 
+运行商品 CRUD 练习（每个文件独立跑，`print_r` 打印结果）：
+
+```powershell
+cd ".\PHP数据库开发"
+php .\products\create.php     # INSERT ... RETURNING id
+php .\products\query.php      # 单条查询，id 不存在时提示"商品不存在"
+php .\products\list.php       # 排序白名单
+php .\products\search.php     # 动态条件 + 分页 + 总数
+```
+
+运行阶段 4 的商品 API（内置服务器以 `public/` 为根目录）：
+
+```powershell
+$env:DB_PASSWORD = "你的数据库密码"
+cd ".\PHP数据库开发\public"
+php -S 127.0.0.1:8000 -t .
+```
+
+```powershell
+# 列表 + 搜索 + 分页
+curl.exe "http://127.0.0.1:8000/products.php?keyword=键盘&page=1&pageSize=10"
+# 创建商品（JSON body）
+curl.exe -X POST http://127.0.0.1:8000/products.php `
+  -H "Content-Type: application/json" `
+  -d "{\"name\":\"鼠标\",\"price\":99.5,\"stock\":20}"
+# 分页参数非法，期望 400
+curl.exe "http://127.0.0.1:8000/products.php?page=0"
+```
+
+> 注意：`database.php` 在缺少 `DB_PASSWORD` 时是直接 `exit` 输出一段纯文本，状态码仍是 200；连接失败时异常未被捕获，会返回 500 且没有 JSON 响应体。这两处正是阶段 5 要解决的问题（统一异常处理 + 统一响应结构）。
+
 语法检查与测试：
 
 ```powershell
@@ -278,24 +367,28 @@ php -l ".\PHP数据库开发\connection-test.php"
 - **解释命令：** 终端命令都说明用途、参数与执行结果。
 - **联系前端经验：** 适当对比 JavaScript / TypeScript、Node.js 与 npm，重点讲清 PHP 的差异。
 - **先理解再上框架：** 进入 Laravel 前先掌握 HTTP、数据库和基础后端架构。
-- **持续迭代项目：** 每个阶段的知识都逐步落到 MiniShop 上。
+- **持续迭代练习：** 阶段 1~5 把知识落到各自的练习项目上，阶段 6 起集中投入 MiniShop。
 - **及时复盘：** 根据实际代码与运行结果确认掌握程度，再决定是否推进。
 
 ## 下一步
 
-阶段 4 进行中，连接链路已打通，接着按以下顺序推进：
+阶段 4 已完成（PDO 连接、结果获取、预处理、CRUD、注入防护、事务、多表写入、动态查询、分页、HTTP 商品 API），进入 **阶段 5：后端架构与设计**：
 
-1. 在阿里云实例上创建 `minishop` 数据库与业务用户，避免后续练习直接用 `infra_admin` 这类管理账号。
-2. 建表：商品、分类、用户，先只做主键与必要字段，字段类型要能对上业务（价格用 `numeric` 而不是 `float`）。
-3. 用 `prepare()` + 参数绑定完成 CRUD，对比拼接 SQL 的注入风险。
-4. 练习事务：`beginTransaction()` / `commit()` / `rollBack()`，用下单流程理解事务边界。
-5. 建外键与约束，实现商品 - 分类一对多、订单 - 商品多对多。
-6. 练习分页、排序、筛选与复杂查询，用 `EXPLAIN` 观察索引是否生效。
-7. 把 MiniShop 的商品数据从数组迁移到 PostgreSQL，接口层响应结构保持不变。
-8. 收尾后进入阶段 5：后端架构与设计。
+1. 初始化 `mini-framework` 练习项目，用 Composer + PSR-4 自动加载自己的命名空间。
+2. 写一个最小 Router：把 `/products`、`/products/{id}` 映射到处理函数，支持 GET / POST。
+3. 拆 Controller：只负责解析请求参数、调用服务、返回响应。
+4. 拆 Service：库存校验、金额计算等业务规则集中到这里，与 HTTP 无关。
+5. 拆 Repository：把 `products.php` 里的 SQL 全部搬进去，Controller 不再直接碰 `$pdo`。
+6. 加依赖注入：容器或构造函数注入的方式把 Repository 交给 Service，而不是在类内部 `require`。
+7. 统一异常处理 + 统一响应结构，把这些年踩过的「500 空响应」「exit 还返回 200」都收口。
+8. 补配置管理（`.env` 式读取）与简单日志，为阶段 6 的 Laravel 打底。
+
+阶段 4 留给阶段 6 补的：索引与 `EXPLAIN`、外键约束验证、`JOIN` 查询练习。
 
 ## 更新记录
 
+- 2026-11-24：**阶段 4 完成**。新增 `PHP数据库开发/public/products.php`，把 PDO 查询整合成原生 HTTP 商品 API（GET 搜索 + 分页、POST 创建返回 201、参数非法 400）；README 与学习计划同步标记阶段 4 完成、阶段 5 进入进行中，补上 API 运行方式与 curl 示例，并记录两处待改进（无密码时 `exit` 仍返回 200、连接异常未捕获导致 500 空响应）。
+- 2026-11-24：调整学习计划——MiniShop 移到阶段 6（Laravel）才正式开发，阶段 1~5 改为纯练习载体（阶段 4 用练习表代替商城建模、阶段 5 用 `mini-framework` 骨架）；同时按实际进度补全阶段 4（共享 `database.php`、`products` / `orders` / `order_items` 练习表、CRUD、排序白名单、动态查询与分页、事务与跨表下单）。
 - 2026-11-23：进入阶段 4。新增 `PHP数据库开发/connection-test.php`，通过 SSH 隧道把阿里云 PostgreSQL 映射到本地 `5433`，用 PDO 连接并查询库名、当前用户与服务端版本；密码从 `DB_PASSWORD` 环境变量读取，仓库不落任何凭据。
 - 2026-11-23：阶段 3 完成。新增 `PHP Web 开发基础/php-server/public/`，覆盖内置服务器、请求 / 响应、统一 JSON 封装、RESTful 约定、Cookie、Session、文件上传与下载、表单校验、XSS 转义与密码哈希；内置服务器 + curl 全部实测通过，README 补充运行方式与阶段 3 说明。
 - 2026-11-23：阶段 2 完成。安装 Guzzle 8.6.0 与 PHPUnit 13.4，`composer.lock` 生成并锁定版本，完成 PSR-4 自动加载与 Guzzle 请求练习；同步更新 README 与学习计划中的阶段状态。

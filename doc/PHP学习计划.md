@@ -102,11 +102,11 @@
 - XSS 转义：`htmlspecialchars($str, ENT_QUOTES, 'UTF-8')`
 - 密码安全：`password_hash()` 生成哈希、`password_verify()` 校验，理解为什么不要存明文或自己写加密
 
-留到后续阶段补：CSRF Token（阶段 6 认证）、PUT/PATCH/DELETE 请求体解析（阶段 4~5）、SQL 注入与预处理（阶段 4）。
+留到后续阶段补：CSRF Token（阶段 6 认证）、PUT/PATCH/DELETE 请求体解析（阶段 5~6）。SQL 注入与预处理已在阶段 4 用 PDO 补齐。
 
 ### 阶段 4：数据库开发
 
-**进度：当前阶段**
+**进度：已完成**
 
 学习内容：
 
@@ -130,18 +130,31 @@
 - 凭据管理：密码从 `DB_PASSWORD` 环境变量读取，缺失则直接退出，代码里不留密码
 - 连接后查询 `current_database()`、`current_user`、`version()` 确认目标库、身份与版本
 - 用 `PDOException` 捕获连接失败并输出原因
+- 业务库与业务用户：`php_learning` + `php_learning_user`，不再用管理账号做练习
+- `database.php` 抽出共享连接，各练习 `require_once` 复用
+- 结果获取：`fetch()` / `fetchAll()` / `fetchColumn()`，以及 `while` 逐行遍历
+- 练习表：`products`、`orders`、`order_items`、`transaction_demo`
+- CRUD：`prepare()` + 参数绑定（`products/create.php`、`update.php`、`delete.php`、`query.php`、`list.php`），并用 `RETURNING` 直接拿到被操作的行
+- SQL 注入原理与防护：对比拼接 SQL 与参数绑定，理解预处理把「数据」和「语句」分开
+- 排序防注入：列名与方向白名单校验后再拼进 `ORDER BY`
+- 动态条件查询 + 分页：按需拼 WHERE、`COUNT(*)` 算总页数、`LIMIT/OFFSET` 分页并显式绑定 `PARAM_INT`
+- 事务：`beginTransaction` / `commit` / `rollBack` + `inTransaction()`，`transaction-test.php` 演示异常回滚
+- 多表关系与跨表事务：`orders` + `order_items` 结构，`order.php` 一个事务内完成扣库存（带 `stock >= :n` 条件与 `RETURNING`）、写订单、写订单明细
+- **PDO 整合成 HTTP API**：`public/products.php`
+  - `GET /products.php?keyword=&page=&pageSize=` → 动态搜索 + 分页，返回 `data` 与 `pagination`
+  - `POST /products.php`（JSON body）→ 校验后插入，成功 201 返回新记录，参数非法 400
+  - 统一 `Content-Type: application/json` + `JSON_UNESCAPED_UNICODE`
 
-待完成：
+本阶段未覆盖（留到阶段 6 做查询优化时补）：
 
-- 创建 `minishop` 数据库与业务用户
-- 建表与字段类型设计
-- CRUD：`prepare()` + 参数绑定
-- 事务与回滚
-- 外键约束与一对多 / 多对多
-- 分页、排序、筛选与索引优化
-- 将 MiniShop 数据从数组迁移到数据库
+- 索引：给 `name` / `price` / `created_at` 建索引，用 `EXPLAIN` 对比前后执行计划
+- 显式外键约束的验证：插入不存在的 `product_id` 验证是否被拦住
+- `JOIN` 查询练习：目前只有订单两张表的结构与写入，还没有联合查询
+- 前缀模糊 `LIKE '%关键词%'` 为什么用不上 B-tree 索引
 
 ### 阶段 5：后端架构与设计
+
+**进度：当前阶段**
 
 学习内容：
 
@@ -157,7 +170,7 @@
 - 分层架构与职责划分
 - API 响应结构设计
 
-阶段目标：不依赖大型框架，从零搭建结构清晰、职责明确、可扩展的 PHP 后端项目。
+阶段目标：不依赖大型框架，从零搭建结构清晰、职责明确、可扩展的 PHP 后端骨架（练习项目，不承载商城业务），为阶段 6 使用 Laravel 打底。
 
 ### 阶段 6：Laravel 框架实战
 
@@ -177,7 +190,7 @@
 - Queue 队列与异步任务
 - 自动化测试
 
-阶段目标：能够使用 Laravel 独立开发真实业务 API，理解框架如何解决路由、依赖注入、数据库访问、认证、缓存和异步任务等问题。
+阶段目标：**正式启动 MiniShop 项目开发**，用 Laravel 完成用户、商品、分类、购物车、订单、支付、缓存与异步任务的真实业务，并理解框架如何解决路由、依赖注入、数据库访问、认证、缓存和异步任务等问题。
 
 ### 阶段 7：部署、运维与综合实战
 
@@ -198,11 +211,29 @@
 
 阶段目标：将完整项目部署到自己的阿里云服务器，能够完成基本的上线、运行维护、问题排查与性能优化。
 
-## 三、贯穿学习过程的实战项目：MiniShop 商城后端
+## 三、实战项目：MiniShop 商城后端（阶段 6 正式启动）
 
-整个学习过程使用同一个商城项目逐步迭代，而不是每个阶段都做互不相关的 Demo。
+**调整后的定位：阶段 1~5 只做聚焦单个知识点的小练习，不背商城业务；进入阶段 6（Laravel）后才正式开发 MiniShop，阶段 7 部署上线。**
 
-### 功能规划
+### 这样安排的原因
+
+- 阶段 1~5 的目标是理解语言、HTTP、数据库、分层架构，用最小可运行代码验证即可，过早套上完整业务会分散注意力；
+- 原生 PHP 从零手写一个商城成本高、可维护性差，Laravel 自带路由、ORM、迁移、认证、队列，才是真实项目的合理载体；
+- 阶段 5 的分层练习用一个「小型练习项目」验证 Router / Controller / Service / Repository 的职责划分——先懂结构，再用框架。
+
+### 阶段 1~5 的练习载体
+
+| 阶段 | 练习载体 | 目的 |
+| --- | --- | --- |
+| 1 | `php语言基础/` | 语法、数组、函数、OOP、异常 |
+| 2 | `PHP 工程化基础/php-composer-demo/` | Composer、PSR-4、第三方依赖 |
+| 3 | `PHP Web 开发基础/php-server/` | HTTP、超全局变量、Cookie/Session、上传下载、校验、安全基础 |
+| 4 | `PHP数据库开发/` + 练习表（如 `products`） | PDO、CRUD、预处理、事务、动态查询与分页、把查询整合成 HTTP API |
+| 5 | 待建的 `mini-framework` 练习项目 | Router、Controller、Service、Repository、DI、异常与日志 |
+
+练习表只用于验证 SQL 与 PDO 能力，字段精简，不做完整商城建模；正式的表结构在阶段 6 用 Laravel Migration 重新设计。
+
+### MiniShop 功能规划
 
 | 模块     | 计划实现的功能                   |
 | -------- | -------------------------------- |
@@ -226,15 +257,17 @@
 - **服务器：** Linux、阿里云 ECS
 - **Web 服务：** Nginx 或 Caddy
 
-### 项目演进方式
+### MiniShop 开发路线（阶段 6~7）
 
-1. 阶段 1：编写 PHP 基础代码，熟悉语言特性。
-2. 阶段 2：初始化项目，使用 Composer 管理依赖和自动加载。
-3. 阶段 3：使用原生 PHP 实现基础 HTTP API。
-4. 阶段 4：连接 PostgreSQL，实现商品、用户等数据操作。
-5. 阶段 5：逐步重构为 Router、Controller、Service、Repository 等分层结构。
-6. 阶段 6：使用 Laravel 实现完整商城业务。
-7. 阶段 7：通过 Docker Compose 部署到阿里云服务器，补充缓存、异步任务、日志和运维能力。
+1. 初始化 Laravel 项目，配置 PostgreSQL 与 `.env`，跑通第一条 Migration。
+2. 用户模块：注册、登录、Token / Session 认证，角色与权限控制。
+3. 商品与分类：Migration + Eloquent 模型 + CRUD + 关联关系。
+4. 搜索：筛选、排序、分页，理解查询构造器与索引的配合。
+5. 购物车与订单：创建订单、订单明细、状态流转，用数据库事务保证一致性。
+6. 支付：模拟支付流程与支付状态管理。
+7. 缓存与异步：Redis 缓存热点商品，队列处理订单相关任务。
+8. 自动化测试：为订单、支付等核心流程补测试。
+9. 阶段 7：Docker Compose 部署到阿里云，配 Nginx / Caddy + PHP-FPM，补日志、监控与备份。
 
 ## 四、学习方式与约定
 
@@ -243,23 +276,25 @@
 - **解释命令：** 对终端命令说明用途、参数和执行结果。
 - **联系前端经验：** 适当对比 JavaScript / TypeScript、Node.js 和 npm，重点解释 PHP 的不同之处。
 - **先理解再使用框架：** 在进入 Laravel 前，先理解 HTTP、数据库和基本后端架构。
-- **持续迭代项目：** 将每个阶段学到的知识逐步应用到 MiniShop。
+- **持续迭代练习：** 阶段 1~5 把知识落到各自的练习项目上；阶段 6 起才集中投入 MiniShop。
 - **及时复盘：** 根据实际代码和运行结果检查掌握情况，再决定是否推进。
 
 ## 五、当前进度与下一步
 
-阶段 1 ~ 3 已完成，阶段 4 进行中：已通过 SSH 隧道连上阿里云 PostgreSQL，`connection-test.php` 能查到库名、用户与版本。
+阶段 1 ~ 4 已完成。阶段 4 覆盖了 PDO 连接、结果获取、预处理与参数绑定、CRUD、SQL 注入防护、事务与回滚、多表写入、动态查询、分页，最后把 PDO 查询整合成原生 HTTP 商品 API（`public/products.php`）。索引、外键约束验证与 `JOIN` 练习留到阶段 6 做查询优化时补。
 
-下一步建议按以下顺序继续：
+当前进入 **阶段 5：后端架构与设计**。下一步建议按以下顺序继续：
 
-1. 在阿里云实例创建 `minishop` 数据库与业务用户，后续练习不再使用管理账号。
-2. 设计并创建基础表：商品、分类、用户，注意字段类型（价格用 `numeric`）。
-3. 用 `prepare()` + 参数绑定完成 CRUD，对比拼接 SQL 的注入风险。
-4. 练习事务：`beginTransaction()` / `commit()` / `rollBack()`，用下单流程理解事务边界。
-5. 建立外键与约束，实现商品 - 分类一对多、订单 - 商品多对多。
-6. 练习分页、排序、筛选与复杂查询，用 `EXPLAIN` 观察索引是否生效。
-7. 把 MiniShop 的商品数据从数组迁移到 PostgreSQL，接口层保持响应结构不变。
-8. 阶段收尾后进入阶段 5：后端架构与设计。
+1. 初始化 `mini-framework` 练习项目，用 Composer + PSR-4 注册自己的命名空间。
+2. 写一个最小 Router：把 `/products`、`/products/{id}` 映射到处理函数，支持 GET / POST。
+3. 拆 Controller：只负责解析请求参数、调用 Service、返回响应。
+4. 拆 Service：库存校验、金额计算等业务规则集中于此，不依赖 HTTP。
+5. 拆 Repository：把 `products.php` 里的 SQL 全部搬进去，Controller 不再直接碰 `$pdo`。
+6. 加依赖注入：用构造函数注入 Repository，替代类内部 `require` / `new`。
+7. 统一异常处理 + 统一响应结构，收口「连接失败返回 500 空响应」「缺配置时 `exit` 仍返回 200」这类问题。
+8. 补配置管理（`.env` 式读取）与简单日志。
+9. 阶段 5 只练结构（Router / Controller / Service / Repository / DI / 异常 / 日志），不写商城业务。
+10. 阶段 6 起用 Laravel 正式开发 MiniShop，表结构用 Migration 重新设计，不复用练习表。
 
 ---
 
