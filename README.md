@@ -14,8 +14,8 @@
 | 2 | PHP 工程化基础（Composer / 自动加载 / 规范） | 已完成 |
 | 3 | PHP Web 开发基础（HTTP、超全局变量、原生 API） | 已完成 |
 | 4 | 数据库开发（PDO + PostgreSQL） | 已完成 |
-| 5 | 后端架构与设计（MVC、分层、DI，练习骨架） | 进行中 |
-| 6 | Laravel 框架实战（**MiniShop 正式开发**） | 未开始 |
+| 5 | 后端架构与设计（MVC、分层、DI，练习骨架） | 已完成 |
+| 6 | Laravel 框架实战（**MiniShop 正式开发**） | 进行中 |
 | 7 | 部署、运维与综合实战 | 未开始 |
 
 ## 当前进度
@@ -125,19 +125,30 @@ Guzzle 会带入 `guzzlehttp/promises`、`guzzlehttp/psr7`、`psr/http-*` 等传
 
 > 安全约定：仓库里不出现任何数据库凭据。密码只通过环境变量传入；隧道连接信息（本地端口、库名、用户名）可以入库，密码不行。
 
-### 阶段 5：后端架构与设计（进行中）
+### 阶段 5：后端架构与设计（已完成）
 
 目标：把阶段 4 那个「SQL、校验、响应挤在一个文件里」的 `products.php` 拆开，理解每一层该管什么。
 
-计划覆盖：
+已完成（代码在 `PHP后端架构与设计/`）：
 
-- Router：把 `/products`、`/products/{id}` 映射到具体处理函数，告别一个文件一个接口
-- Controller：只负责取参数、调服务、定状态码
-- Service：业务规则（库存校验、金额计算）集中在这里
-- Repository：所有 SQL 收敛到一层，换数据库只改这里
-- 依赖注入：把 `$pdo` / Repository 传进去，而不是在类里自己 `new` / `require`
-- 统一异常处理 + 统一响应结构，配 `try/catch` 兜住未预期错误
-- 配置与环境变量、简单日志
+- **Repository**：`app/repositories/productRepository.php` 只碰 SQL，`findAll()` / `findById()` / `create()`，接收构造函数注入的 `PDO`
+- **Service**：`app/services/productService.php` 只管业务规则，不碰 HTTP、不碰 SQL
+  - 数据校验下沉：名称不能空、价格 `> 0`、库存 `>= 0`，违反抛 `InvalidArgumentException`
+  - 商品不存在抛 `ProductNotFoundException`，而不是返回 `false` 让上层猜
+- **Controller**：`app/controllers/productController.php` 只做「取参数 → 校验格式 → 调 Service → 出响应」
+  - `index()` 列表、`show()` 详情（`?id=`）、`create()` 创建
+  - `sendJson()` 统一输出 `{code, message, data}` + 对应状态码
+  - 分层校验分工：Controller 管「有没有传、类型对不对」（JSON 是否合法、`price` 是否数字、`stock` 是否整数），Service 管「业务上允不允许」（价格必须大于 0）
+- **Router**：`app/router.php` 支持 `get()` / `post()` 注册 + `dispatch($method, $path)` 分发，未命中抛 `RouteNotFoundException`
+- **依赖注入**：入口手工装配 `PDO → Repository → Service → Controller`，各层通过构造函数拿依赖，没有一层自己去 `require` 连接或 `new` 下游
+- **配置管理**：`app/config/database.php` 返回配置数组（`DB_HOST` / `DB_PORT` / `DB_NAME` / `DB_USERNAME` / `DB_PASSWORD`，带默认值），`app/config/connection.php` 统一建立 `$pdo`
+- **统一异常处理**：`app/exceptions/exceptionHandler.php` 按异常类型映射状态码——`InvalidArgumentException` → 400、`ProductNotFoundException` / `RouteNotFoundException` → 404、其它 → 500 且只对外返回「服务器内部错误」
+- **日志**：`app/logger.php` 分级写 `logs/app.log`，未预期异常记 `类名: 消息`，对外不泄露细节
+- **单一入口**：`public/index.php` 承担装配 + 注册路由 + 统一 `try/catch`，原来的 `public/products.php` 与根目录 `database.php` 已删除
+
+本阶段未覆盖（留到阶段 6）：PSR-4 自动加载（现在还是手动 `require_once`）、动态路由（`/products/{id}`，现在用 `/products/query?id=1`）、中间件、依赖注入容器（现在入口手写装配）、鉴权。
+
+> ⚠️ 目录里文件名首字母小写（`productRepository.php`），而类名与 `require` 路径是大写（`ProductRepository.php`）。Windows 不区分大小写能跑，**Linux 会直接找不到文件**，上服务器前必须统一。
 
 ## 实战项目：MiniShop 商城后端
 
@@ -151,7 +162,7 @@ Guzzle 会带入 `guzzlehttp/promises`、`guzzlehttp/psr7`、`psr/http-*` 等传
 | 2 | `PHP 工程化基础/php-composer-demo/` | Composer、PSR-4、第三方依赖 |
 | 3 | `PHP Web 开发基础/php-server/` | HTTP、超全局变量、Cookie/Session、上传下载、校验、安全基础 |
 | 4 | `PHP数据库开发/` + 练习表（如 `products`） | PDO、CRUD、预处理、事务、动态查询与分页、把查询整合成 HTTP API |
-| 5 | 待建的 `mini-framework` 练习项目 | Router、Controller、Service、Repository、DI、异常与日志 |
+| 5 | `PHP后端架构与设计/` | Router、Controller、Service、Repository、DI、统一异常、配置与日志 |
 
 练习表只用来验证 SQL 与 PDO 能力，字段精简；正式表结构在阶段 6 用 Laravel Migration 重新设计。
 
@@ -231,7 +242,7 @@ php-learning/
 │           ├── validate.php        # 表单校验与 400 响应
 │           ├── escape.php          # XSS 转义 + 密码哈希
 │           └── uploads/            # 上传落盘目录（文件不提交，仅保留目录）
-└── PHP数据库开发/                   # 阶段 4 练习
+├── PHP数据库开发/                   # 阶段 4 练习
     ├── database.php                # 共享 PDO 连接（密码读环境变量）
     ├── connection-test.php         # 连接阿里云 PostgreSQL 并查库名 / 用户 / 版本
     ├── transaction-test.php        # 事务异常回滚演示
@@ -245,6 +256,26 @@ php-learning/
     │   └── search.php              # 动态条件 + 分页 + 总数
     └── public/
         └── products.php            # HTTP 商品 API（GET 搜索分页 / POST 创建）
+└── PHP后端架构与设计/                 # 阶段 5 练习（分层骨架）
+    ├── app/
+    │   ├── config/
+    │   │   ├── database.php        # 配置数组：DB_HOST/PORT/NAME/USERNAME/PASSWORD
+    │   │   └── connection.php      # 按配置建立 $pdo
+    │   ├── controllers/
+    │   │   └── productController.php   # index / show / create + sendJson
+    │   ├── services/
+    │   │   └── productService.php      # 业务校验与编排
+    │   ├── repositories/
+    │   │   └── productRepository.php   # findAll / findById / create
+    │   ├── exceptions/
+    │   │   ├── exceptionHandler.php    # 异常 → 状态码 + 统一响应
+    │   │   ├── productNotFoundException.php
+    │   │   └── routeNotFoundException.php
+    │   ├── logger.php              # 分级写 logs/app.log
+    │   └── router.php              # get / post / dispatch
+    ├── logs/                       # 运行时日志（*.log 不入库）
+    └── public/
+        └── index.php               # 单一入口：装配依赖 + 注册路由 + try/catch
 ```
 
 ## 环境与运行
@@ -343,7 +374,30 @@ curl.exe -X POST http://127.0.0.1:8000/products.php `
 curl.exe "http://127.0.0.1:8000/products.php?page=0"
 ```
 
-> 注意：`database.php` 在缺少 `DB_PASSWORD` 时是直接 `exit` 输出一段纯文本，状态码仍是 200；连接失败时异常未被捕获，会返回 500 且没有 JSON 响应体。这两处正是阶段 5 要解决的问题（统一异常处理 + 统一响应结构）。
+> 注意：阶段 4 的 `database.php` 在缺少 `DB_PASSWORD` 时是直接 `exit` 输出一段纯文本，状态码仍是 200；连接失败时异常未被捕获，会返回 500 且没有 JSON 响应体。这两处正是阶段 5 要解决的问题——阶段 5 的 `connection.php` 仍然保留了 `exit`，但异常和路由已经统一到 `ExceptionHandler`。
+
+运行阶段 5 的分层项目（单一入口 `public/index.php`）：
+
+```powershell
+$env:DB_PASSWORD = "你的数据库密码"
+cd ".\PHP后端架构与设计\public"
+php -S 127.0.0.1:8001 -t .
+```
+
+```powershell
+# 商品列表
+curl.exe "http://127.0.0.1:8001/products"
+# 商品详情（路由注册的是 /products/query，id 走查询串）
+curl.exe "http://127.0.0.1:8001/products/query?id=2"
+# 创建商品：name / description / price / stock 都必填
+curl.exe -X POST http://127.0.0.1:8001/products `
+  -H "Content-Type: application/json" `
+  -d "{\"name\":\"鼠标\",\"description\":\"无线鼠标\",\"price\":99.5,\"stock\":20}"
+# 未注册的路径，期望 404 JSON
+curl.exe "http://127.0.0.1:8001/nope"
+```
+
+三层校验可以分别试：`price` 传字符串 → Controller 返回 400；`price` 传 `0` → Service 抛异常经 `ExceptionHandler` 返回 400；`id` 传不存在的值 → 404。未预期异常（数据库断开等）会被记进 `logs/app.log`，对外只返回「服务器内部错误」。
 
 语法检查与测试：
 
@@ -372,22 +426,24 @@ php -l ".\PHP数据库开发\connection-test.php"
 
 ## 下一步
 
-阶段 4 已完成（PDO 连接、结果获取、预处理、CRUD、注入防护、事务、多表写入、动态查询、分页、HTTP 商品 API），进入 **阶段 5：后端架构与设计**：
+阶段 5 已完成（Router、Controller / Service / Repository 分层、依赖注入、配置管理、统一异常与日志），进入 **阶段 6：Laravel 框架实战**，正式启动 MiniShop：
 
-1. 初始化 `mini-framework` 练习项目，用 Composer + PSR-4 自动加载自己的命名空间。
-2. 写一个最小 Router：把 `/products`、`/products/{id}` 映射到处理函数，支持 GET / POST。
-3. 拆 Controller：只负责解析请求参数、调用服务、返回响应。
-4. 拆 Service：库存校验、金额计算等业务规则集中到这里，与 HTTP 无关。
-5. 拆 Repository：把 `products.php` 里的 SQL 全部搬进去，Controller 不再直接碰 `$pdo`。
-6. 加依赖注入：容器或构造函数注入的方式把 Repository 交给 Service，而不是在类内部 `require`。
-7. 统一异常处理 + 统一响应结构，把这些年踩过的「500 空响应」「exit 还返回 200」都收口。
-8. 补配置管理（`.env` 式读取）与简单日志，为阶段 6 的 Laravel 打底。
+1. 装 Laravel，配好 PostgreSQL 连接，把 `DB_*` 环境变量搬进 `.env`。
+2. 用 Migration 重新设计表结构（不再复用阶段 4 的练习表），先建 `users`、`categories`、`products`。
+3. 跑通 Eloquent 模型与关联（商品 - 分类一对多），对比阶段 5 手写 Repository 的差别。
+4. 用 Resource / Controller 实现商品列表、详情、创建，体会 Laravel 的 Resource Controller 与阶段 5 手写 Router 的对应关系。
+5. 用户注册登录：`password_hash` → Laravel 的 Hash 门面，Sanctum 或 Session 认证。
+6. 购物车与订单：事务 + 关联写入，复用阶段 4 `order.php` 的思路。
+7. 搜索、筛选、分页，配合索引与 `EXPLAIN`（阶段 4 遗留）。
+8. 缓存与队列：Redis 缓存热点商品，队列处理订单任务。
+9. 核心流程补 PHPUnit 测试（阶段 2 装了 PHPUnit 但一直没写用例）。
+10. 阶段 7 用 Docker Compose 部署到阿里云。
 
-阶段 4 留给阶段 6 补的：索引与 `EXPLAIN`、外键约束验证、`JOIN` 查询练习。
+阶段 5 留给后面的：PSR-4 自动加载与文件名大小写统一（上 Linux 前必须处理）、动态路由、鉴权与中间件。
 
 ## 更新记录
 
-- 2026-11-24：**阶段 4 完成**。新增 `PHP数据库开发/public/products.php`，把 PDO 查询整合成原生 HTTP 商品 API（GET 搜索 + 分页、POST 创建返回 201、参数非法 400）；README 与学习计划同步标记阶段 4 完成、阶段 5 进入进行中，补上 API 运行方式与 curl 示例，并记录两处待改进（无密码时 `exit` 仍返回 200、连接异常未捕获导致 500 空响应）。
+- 2026-11-25：**阶段 5 完成**。`PHP后端架构与设计/` 补齐 Router、配置管理（`config/database.php` + `connection.php`）、统一异常处理（400 / 404 / 500 分级 + `{code, message, data}` 响应）、分级日志（`logs/app.log`），入口收敛为 `public/index.php`，商品列表 / 详情 / 创建三个接口全部走 Controller → Service → Repository，删除原 `public/products.php` 与根目录 `database.php`；README 与学习计划同步标记阶段 5 完成、阶段 6 进入当前，并记录文件名大小写这一 Linux 隐患。
 - 2026-11-24：调整学习计划——MiniShop 移到阶段 6（Laravel）才正式开发，阶段 1~5 改为纯练习载体（阶段 4 用练习表代替商城建模、阶段 5 用 `mini-framework` 骨架）；同时按实际进度补全阶段 4（共享 `database.php`、`products` / `orders` / `order_items` 练习表、CRUD、排序白名单、动态查询与分页、事务与跨表下单）。
 - 2026-11-23：进入阶段 4。新增 `PHP数据库开发/connection-test.php`，通过 SSH 隧道把阿里云 PostgreSQL 映射到本地 `5433`，用 PDO 连接并查询库名、当前用户与服务端版本；密码从 `DB_PASSWORD` 环境变量读取，仓库不落任何凭据。
 - 2026-11-23：阶段 3 完成。新增 `PHP Web 开发基础/php-server/public/`，覆盖内置服务器、请求 / 响应、统一 JSON 封装、RESTful 约定、Cookie、Session、文件上传与下载、表单校验、XSS 转义与密码哈希；内置服务器 + curl 全部实测通过，README 补充运行方式与阶段 3 说明。

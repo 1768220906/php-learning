@@ -154,7 +154,7 @@
 
 ### 阶段 5：后端架构与设计
 
-**进度：当前阶段**
+**进度：已完成**
 
 学习内容：
 
@@ -172,7 +172,27 @@
 
 阶段目标：不依赖大型框架，从零搭建结构清晰、职责明确、可扩展的 PHP 后端骨架（练习项目，不承载商城业务），为阶段 6 使用 Laravel 打底。
 
+已完成（`PHP后端架构与设计/`）：
+
+- 分层落地：Repository（只碰 SQL）→ Service（只做业务）→ Controller（只处理请求响应），依赖通过构造函数注入
+- Router：`get()` / `post()` 注册 + `dispatch()` 分发，未命中抛 `RouteNotFoundException`
+- 三个接口：商品列表、商品详情（`?id=`）、创建商品
+- 校验分工：Controller 校验格式（JSON 是否合法、字段是否存在、类型是否正确），Service 校验业务（名称非空、价格 > 0、库存 >= 0）
+- 统一响应结构：`{code, message, data}`，成功 200 / 创建 201
+- 统一异常处理：`InvalidArgumentException` → 400、`ProductNotFoundException` / `RouteNotFoundException` → 404、其它 → 500（只对外返回「服务器内部错误」）
+- 配置管理：`app/config/database.php` 读 `DB_HOST` / `DB_PORT` / `DB_NAME` / `DB_USERNAME` / `DB_PASSWORD`（带默认值），`connection.php` 统一建 `$pdo`
+- 日志：`app/logger.php` 分级写 `logs/app.log`，未预期异常记类名与消息
+- 单一入口：`public/index.php` 负责装配依赖、注册路由、统一 `try/catch`
+
+未覆盖（留到阶段 6）：
+
+- PSR-4 自动加载：仍是手动 `require_once`，且文件名首字母小写而类名大写，Linux 下会找不到文件
+- 动态路由 `/products/{id}`：当前用 `/products/query?id=`
+- 依赖注入容器（现在入口手写装配）、中间件、鉴权
+
 ### 阶段 6：Laravel 框架实战
+
+**进度：当前阶段**
 
 学习内容：
 
@@ -229,7 +249,7 @@
 | 2 | `PHP 工程化基础/php-composer-demo/` | Composer、PSR-4、第三方依赖 |
 | 3 | `PHP Web 开发基础/php-server/` | HTTP、超全局变量、Cookie/Session、上传下载、校验、安全基础 |
 | 4 | `PHP数据库开发/` + 练习表（如 `products`） | PDO、CRUD、预处理、事务、动态查询与分页、把查询整合成 HTTP API |
-| 5 | 待建的 `mini-framework` 练习项目 | Router、Controller、Service、Repository、DI、异常与日志 |
+| 5 | `PHP后端架构与设计/` | Router、Controller、Service、Repository、DI、统一异常、配置与日志 |
 
 练习表只用于验证 SQL 与 PDO 能力，字段精简，不做完整商城建模；正式的表结构在阶段 6 用 Laravel Migration 重新设计。
 
@@ -281,20 +301,22 @@
 
 ## 五、当前进度与下一步
 
-阶段 1 ~ 4 已完成。阶段 4 覆盖了 PDO 连接、结果获取、预处理与参数绑定、CRUD、SQL 注入防护、事务与回滚、多表写入、动态查询、分页，最后把 PDO 查询整合成原生 HTTP 商品 API（`public/products.php`）。索引、外键约束验证与 `JOIN` 练习留到阶段 6 做查询优化时补。
+阶段 1 ~ 5 已完成。阶段 4 覆盖 PDO 连接、结果获取、预处理与参数绑定、CRUD、SQL 注入防护、事务与回滚、多表写入、动态查询、分页，以及把 PDO 查询整合成原生 HTTP 商品 API；阶段 5 把那个单文件接口拆成 Router + Controller + Service + Repository，补上依赖注入、配置管理、统一异常处理与日志。
 
-当前进入 **阶段 5：后端架构与设计**。下一步建议按以下顺序继续：
+当前进入 **阶段 6：Laravel 框架实战**，正式开始 MiniShop。下一步建议按以下顺序继续：
 
-1. 初始化 `mini-framework` 练习项目，用 Composer + PSR-4 注册自己的命名空间。
-2. 写一个最小 Router：把 `/products`、`/products/{id}` 映射到处理函数，支持 GET / POST。
-3. 拆 Controller：只负责解析请求参数、调用 Service、返回响应。
-4. 拆 Service：库存校验、金额计算等业务规则集中于此，不依赖 HTTP。
-5. 拆 Repository：把 `products.php` 里的 SQL 全部搬进去，Controller 不再直接碰 `$pdo`。
-6. 加依赖注入：用构造函数注入 Repository，替代类内部 `require` / `new`。
-7. 统一异常处理 + 统一响应结构，收口「连接失败返回 500 空响应」「缺配置时 `exit` 仍返回 200」这类问题。
-8. 补配置管理（`.env` 式读取）与简单日志。
-9. 阶段 5 只练结构（Router / Controller / Service / Repository / DI / 异常 / 日志），不写商城业务。
-10. 阶段 6 起用 Laravel 正式开发 MiniShop，表结构用 Migration 重新设计，不复用练习表。
+1. 安装 Laravel，配置 PostgreSQL 连接，把 `DB_HOST` / `DB_PORT` / `DB_NAME` / `DB_USERNAME` / `DB_PASSWORD` 搬进 `.env`。
+2. 用 Migration 重新设计表结构（不复用阶段 4 的练习表），先建 `users`、`categories`、`products`。
+3. 跑通 Eloquent 模型与关联（商品 - 分类一对多），对比阶段 5 手写 Repository 的差异。
+4. 用 Resource Controller 实现商品列表、详情、创建，对照阶段 5 的 Router + Controller 写法。
+5. 用户注册登录与认证：Laravel Hash + Sanctum 或 Session。
+6. 购物车与订单：事务 + 关联写入，复用阶段 4 `order.php` 的事务思路。
+7. 搜索、筛选、分页，配合索引与 `EXPLAIN`（阶段 4 遗留的查询优化在这里补）。
+8. 缓存与队列：Redis 缓存热点商品，队列处理订单相关任务。
+9. 为核心流程补 PHPUnit 测试（阶段 2 已装 PHPUnit，一直没有用例）。
+10. 阶段 7 用 Docker Compose 部署到阿里云。
+
+阶段 5 留给后面的债：文件名首字母小写而类名大写（Linux 会找不到文件）、PSR-4 自动加载、动态路由、鉴权与中间件。
 
 ---
 
