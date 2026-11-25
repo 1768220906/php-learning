@@ -10,3 +10,6 @@ vendor/
 # Runtime uploads (keep the directory only)
 PHP Web 开发基础/php-server/public/uploads/*
 !PHP Web 开发基础/php-server/public/uploads/.gitkeep
+
+# Runtime logs
+PHP后端架构与设计/logs/*.log

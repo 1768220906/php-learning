@@ -1,5 +1,7 @@
 <?php
 
+require_once __DIR__ . '/../logger.php';
+
 class ExceptionHandler
 {
   public static function handle(Throwable $e): void
@@ -8,6 +10,7 @@ class ExceptionHandler
       self::sendJson(400, [
         'code' => 400,
         'message' => $e->getMessage(),
+        'data' => null,
       ]);
       return;
     }
@@ -16,15 +19,29 @@ class ExceptionHandler
       self::sendJson(404, [
         'code' => 404,
         'message' => $e->getMessage(),
+        'data' => null,
       ]);
       return;
     }
 
-    error_log((string) $e);
+    if ($e instanceof RouteNotFoundException) {
+      self::sendJson(404, [
+        'code' => 404,
+        'message' => $e->getMessage(),
+        'data' => null,
+      ]);
+      return;
+    }
+
+    // 未预期的异常，记录详细错误
+    Logger::error(
+      get_class($e) . ': ' . $e->getMessage()
+    );
 
     self::sendJson(500, [
       'code' => 500,
       'message' => '服务器内部错误',
+      'data' => null,
     ]);
   }
 

@@ -26,10 +26,14 @@ class ProductController
     // 调用 Service 获取商品
     $products = $this->productService->getProducts();
 
-    $this->sendJson(200, $products);
+    $this->sendJson(200, [
+      'code' => 200,
+      'message' => '商品列表获取成功',
+      'data' => $products
+    ]);
   }
 
-  public function create()
+  public function create(): void
   {
     // 获取请求体
     $row_data = file_get_contents("php://input");
@@ -76,7 +80,7 @@ class ProductController
     ]);
   }
 
-  public function show()
+  public function show(): void
   {
 
     $id = $_GET["id"] ?? null;
