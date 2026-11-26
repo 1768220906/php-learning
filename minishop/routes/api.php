@@ -1,7 +1,6 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\UserController;
 
-Route::get('/hello', function () {
-  return response("Hello MiniShop");
-});
+Route::post('/users', [UserController::class, 'store']);
